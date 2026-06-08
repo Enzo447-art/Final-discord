@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cord{% if view == 'channel' %} — #{{ channel.name }}{% elif view == 'server' %} — {{ server.name }}{% elif view == 'dm' %} — {{ friend.username }}{% endif %}</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.4/socket.io.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#0e0f13;--bg2:#161820;--bg3:#1e2030;--bg4:#252840;--accent:#5865f2;--accent2:#eb459e;--text:#e0e2ff;--sub:#8b8fa8;--green:#3ba55c;--red:#ed4245;--yellow:#faa61a}
+body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;height:100vh;display:flex;overflow:hidden}
+
+/* SERVER SIDEBAR */
+.servers-bar{width:72px;background:var(--bg);border-right:1px solid #ffffff06;display:flex;flex-direction:column;align-items:center;padding:.75rem 0;gap:.5rem;overflow-y:auto;flex-shrink:0}
+.servers-bar::-webkit-scrollbar{display:none}
+.srv-icon{width:48px;height:48px;border-radius:50%;background:var(--bg3);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .2s;position:relative;overflow:hidden;flex-shrink:0}
+.srv-icon:hover,.srv-icon.active{border-radius:14px}
+.srv-icon.active{background:var(--accent)}
+.srv-icon img{width:100%;height:100%;object-fit:cover}
+.srv-icon.home{font-size:1.2rem;background:var(--bg3)}
+.srv-icon.home:hover,.srv-icon.home.active{background:var(--green)}
+.srv-divider{width:32px;height:2px;background:#ffffff15;border-radius:1px;margin:.3rem 0}
+.srv-badge{position:absolute;bottom:-2px;right:-2px;background:var(--red);border:2px solid var(--bg);border-radius:50%;width:16px;height:16px;font-size:.55rem;display:flex;align-items:center;justify-content:center;font-weight:700}
+.srv-add{font-size:1.4rem;color:var(--green);background:var(--bg3)}
+.srv-add:hover{background:var(--green);color:#fff;border-radius:14px}
+.srv-explore{font-size:1.1rem;color:var(--accent);background:var(--bg3)}
+.srv-explore:hover{background:var(--accent);color:#fff;border-radius:14px}
+
+/* CHANNEL SIDEBAR */
+.channels-bar{width:240px;background:var(--bg2);display:flex;flex-direction:column;flex-shrink:0}
+.server-header{padding:1rem;border-bottom:1px solid #ffffff08;display:flex;align-items:center;justify-content:space-between;cursor:pointer;font-weight:600;font-size:.95rem}
+.server-header:hover{background:#ffffff05}
+.channels-list{flex:1;overflow-y:auto;padding:.5rem 0}
+.channels-list::-webkit-scrollbar{width:4px}
+.channels-list::-webkit-scrollbar-thumb{background:#ffffff15;border-radius:2px}
+.ch-section{padding:.5rem .75rem .25rem;font-size:.7rem;font-weight:700;color:var(--sub);letter-spacing:.06em;text-transform:uppercase;display:flex;justify-content:space-between;align-items:center}
+.ch-item{display:flex;align-items:center;gap:.5rem;padding:.4rem .75rem;margin:1px .5rem;border-radius:6px;cursor:pointer;color:var(--sub);font-size:.9rem;transition:all .15s;text-decoration:none}
+.ch-item:hover{background:#ffffff08;color:var(--text)}
+.ch-item.active{background:var(--bg4);color:var(--text)}
+.ch-icon{font-size:.9rem;opacity:.7}
+.user-panel{padding:.75rem;background:#0d0e11;display:flex;align-items:center;gap:.6rem;border-top:1px solid #ffffff06}
+.user-avatar-sm{width:32px;height:32px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.8rem;overflow:hidden;flex-shrink:0;cursor:pointer}
+.user-avatar-sm img{width:100%;height:100%;object-fit:cover}
+.user-info-sm{flex:1;min-width:0}
+.user-info-sm .name{font-size:.85rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.user-info-sm .tag{font-size:.7rem;color:var(--sub)}
+.panel-icons{display:flex;gap:.3rem}
+.panel-btn{background:none;border:none;color:var(--sub);cursor:pointer;padding:.3rem;border-radius:4px;font-size:1rem;transition:color .2s}
+.panel-btn:hover{color:var(--text);background:#ffffff0a}
+.dm-section{padding:.75rem .75rem .25rem;display:flex;align-items:center;justify-content:space-between}
+.dm-section h4{font-size:.7rem;font-weight:700;color:var(--sub);letter-spacing:.06em;text-transform:uppercase}
+.friend-item{display:flex;align-items:center;gap:.6rem;padding:.4rem .75rem;margin:1px .5rem;border-radius:6px;cursor:pointer;text-decoration:none;color:var(--sub);transition:all .15s}
+.friend-item:hover{background:#ffffff08;color:var(--text)}
+.friend-item.active{background:var(--bg4);color:var(--text)}
+.friend-av{width:32px;height:32px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:.8rem;font-weight:700;overflow:hidden;flex-shrink:0;position:relative}
+.friend-av img{width:100%;height:100%;object-fit:cover}
+.status-dot{position:absolute;bottom:-1px;right:-1px;width:10px;height:10px;border-radius:50%;background:var(--green);border:2px solid var(--bg2)}
+.friend-name{font-size:.9rem;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* MAIN CONTENT */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.channel-header{padding:.9rem 1rem;border-bottom:1px solid #ffffff08;display:flex;align-items:center;gap:.75rem;background:var(--bg)}
+.channel-header h3{font-size:1rem;font-weight:600}
+.channel-header .ch-desc{font-size:.85rem;color:var(--sub);margin-left:.5rem;padding-left:.75rem;border-left:1px solid #ffffff15}
+.header-actions{margin-left:auto;display:flex;gap:.5rem}
+.header-btn{background:none;border:none;color:var(--sub);cursor:pointer;padding:.4rem;border-radius:6px;font-size:1.1rem;transition:color .2s}
+.header-btn:hover{color:var(--text)}
+.messages-area{flex:1;overflow-y:auto;padding:1rem;display:flex;flex-direction:column;gap:.25rem}
+.messages-area::-webkit-scrollbar{width:6px}
+.messages-area::-webkit-scrollbar-thumb{background:#ffffff15;border-radius:3px}
+.msg-group{display:flex;gap:.75rem;padding:.3rem 0;align-items:flex-start}
+.msg-group:hover{background:#ffffff03;margin:0 -.5rem;padding:.3rem .5rem;border-radius:8px}
+.msg-av{width:40px;height:40px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.9rem;overflow:hidden;flex-shrink:0;margin-top:.1rem}
+.msg-av img{width:100%;height:100%;object-fit:cover}
+.msg-content{flex:1}
+.msg-header{display:flex;align-items:baseline;gap:.5rem;margin-bottom:.2rem}
+.msg-author{font-weight:600;font-size:.95rem}
+.msg-time{font-size:.7rem;color:var(--sub)}
+.msg-text{font-size:.95rem;color:#d4d7f0;line-height:1.5;word-break:break-word}
+.typing-indicator{padding:.4rem 1rem;font-size:.8rem;color:var(--sub);min-height:24px}
+.input-area{padding:.75rem 1rem;background:var(--bg)}
+.input-wrap{background:var(--bg3);border-radius:12px;display:flex;align-items:center;gap:.5rem;padding:.4rem .75rem;border:1px solid #ffffff08}
+.input-wrap input{flex:1;background:none;border:none;color:var(--text);font-family:inherit;font-size:.95rem;outline:none;padding:.4rem 0}
+.input-wrap input::placeholder{color:var(--sub)}
+.send-btn{background:none;border:none;color:var(--accent);cursor:pointer;font-size:1.2rem;padding:.3rem;border-radius:6px;transition:all .2s}
+.send-btn:hover{background:var(--accent);color:#fff}
+.attach-btn{background:none;border:none;color:var(--sub);cursor:pointer;font-size:1.1rem;padding:.3rem;border-radius:6px;transition:color .2s}
+.attach-btn:hover{color:var(--text)}
+
+/* FRIENDS VIEW */
+.friends-view{flex:1;overflow-y:auto;padding:1.5rem}
+.view-header{display:flex;align-items:center;gap:1rem;margin-bottom:1.5rem;flex-wrap:wrap}
+.view-header h2{font-family:'Syne',sans-serif;font-size:1.3rem}
+.tab-btn{background:none;border:none;color:var(--sub);cursor:pointer;padding:.4rem .9rem;border-radius:6px;font-family:inherit;font-size:.9rem;font-weight:500;transition:all .2s}
+.tab-btn:hover{background:#ffffff0a;color:var(--text)}
+.tab-btn.active{background:var(--bg4);color:var(--text)}
+.tab-btn.has-badge{position:relative}
+.tab-btn.has-badge::after{content:attr(data-count);position:absolute;top:0;right:0;background:var(--red);border-radius:50%;width:16px;height:16px;font-size:.6rem;display:flex;align-items:center;justify-content:center;font-weight:700}
+.add-friend-box{background:var(--bg2);border-radius:12px;padding:1.2rem;margin-bottom:1.5rem;border:1px solid #ffffff08}
+.add-friend-box h3{font-size:1rem;margin-bottom:.4rem}
+.add-friend-box p{font-size:.85rem;color:var(--sub);margin-bottom:.9rem}
+.add-friend-row{display:flex;gap:.75rem}
+.add-friend-row input{flex:1;background:var(--bg3);border:1px solid #ffffff10;border-radius:8px;padding:.7rem 1rem;color:var(--text);font-family:inherit;font-size:.9rem;outline:none;transition:border-color .2s}
+.add-friend-row input:focus{border-color:var(--accent)}
+.add-friend-row button{padding:.7rem 1.2rem;background:var(--accent);color:#fff;border:none;border-radius:8px;font-family:inherit;font-weight:600;cursor:pointer;transition:background .2s;white-space:nowrap}
+.add-friend-row button:hover{background:#4752c4}
+.friends-grid{display:flex;flex-direction:column;gap:.5rem}
+.friend-row{display:flex;align-items:center;gap:.75rem;padding:.8rem 1rem;background:var(--bg2);border-radius:10px;border:1px solid #ffffff06}
+.friend-row-av{width:40px;height:40px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:700;overflow:hidden;flex-shrink:0}
+.friend-row-av img{width:100%;height:100%;object-fit:cover}
+.friend-row-info{flex:1}
+.friend-row-info .name{font-weight:600;font-size:.95rem}
+.friend-row-info .tag{font-size:.75rem;color:var(--sub)}
+.friend-actions{display:flex;gap:.5rem}
+.fa-btn{padding:.4rem .9rem;border-radius:8px;border:none;cursor:pointer;font-family:inherit;font-size:.8rem;font-weight:600;transition:all .2s}
+.fa-btn.accept{background:#3ba55c20;color:var(--green);border:1px solid #3ba55c40}
+.fa-btn.accept:hover{background:var(--green);color:#fff}
+.fa-btn.decline,.fa-btn.remove{background:#ed424520;color:var(--red);border:1px solid #ed424540}
+.fa-btn.decline:hover,.fa-btn.remove:hover{background:var(--red);color:#fff}
+.fa-btn.msg{background:#5865f220;color:var(--accent);border:1px solid #5865f240}
+.fa-btn.msg:hover{background:var(--accent);color:#fff}
+.fa-btn.call{background:#3ba55c20;color:var(--green);border:1px solid #3ba55c40}
+.fa-btn.call:hover{background:var(--green);color:#fff}
+.section-label{font-size:.75rem;font-weight:700;color:var(--sub);letter-spacing:.08em;text-transform:uppercase;margin:.75rem 0 .5rem;padding:.3rem 0}
+
+/* MODALS */
+.modal-bg{position:fixed;inset:0;background:#00000080;backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;z-index:1000;opacity:0;pointer-events:none;transition:opacity .2s}
+.modal-bg.open{opacity:1;pointer-events:all}
+.modal{background:var(--bg2);border:1px solid #ffffff10;border-radius:16px;padding:2rem;width:100%;max-width:460px;margin:1rem;transform:scale(.95);transition:transform .2s}
+.modal-bg.open .modal{transform:scale(1)}
+.modal h3{font-family:'Syne',sans-serif;font-size:1.2rem;margin-bottom:.4rem}
+.modal p{color:var(--sub);font-size:.9rem;margin-bottom:1.2rem}
+.modal-field{margin-bottom:1rem}
+.modal-field label{display:block;font-size:.75rem;font-weight:700;color:var(--sub);letter-spacing:.06em;text-transform:uppercase;margin-bottom:.4rem}
+.modal-field input,.modal-field textarea{width:100%;background:var(--bg3);border:1px solid #ffffff10;border-radius:8px;padding:.7rem 1rem;color:var(--text);font-family:inherit;font-size:.9rem;outline:none;transition:border-color .2s}
+.modal-field input:focus,.modal-field textarea:focus{border-color:var(--accent)}
+.modal-field textarea{resize:vertical;min-height:80px}
+.modal-actions{display:flex;gap:.75rem;justify-content:flex-end;margin-top:1.2rem}
+.modal-btn{padding:.7rem 1.4rem;border-radius:8px;border:none;cursor:pointer;font-family:inherit;font-weight:600;font-size:.9rem;transition:all .2s}
+.modal-btn.cancel{background:transparent;color:var(--sub)}
+.modal-btn.cancel:hover{color:var(--text)}
+.modal-btn.primary{background:var(--accent);color:#fff}
+.modal-btn.primary:hover{background:#4752c4}
+.icon-preview{width:80px;height:80px;border-radius:50%;background:var(--bg3);margin:0 auto 1rem;display:flex;align-items:center;justify-content:center;font-size:2rem;overflow:hidden;cursor:pointer;border:2px dashed #ffffff20;transition:border-color .2s}
+.icon-preview:hover{border-color:var(--accent)}
+.icon-preview img{width:100%;height:100%;object-fit:cover}
+.toggle-row{display:flex;align-items:center;justify-content:space-between;padding:.6rem 0}
+.toggle{width:40px;height:22px;background:var(--bg3);border-radius:999px;position:relative;cursor:pointer;transition:background .2s}
+.toggle.on{background:var(--accent)}
+.toggle::after{content:'';position:absolute;top:2px;left:2px;width:18px;height:18px;background:#fff;border-radius:50%;transition:left .2s}
+.toggle.on::after{left:20px}
+.notification{position:fixed;bottom:1.5rem;right:1.5rem;background:var(--bg3);border:1px solid #ffffff15;border-radius:10px;padding:.9rem 1.2rem;font-size:.9rem;z-index:2000;transform:translateY(120%);transition:transform .3s;max-width:300px}
+.notification.show{transform:translateY(0)}
+.notification.success{border-color:#3ba55c40}
+.notification.error{border-color:#ed424540;color:var(--red)}
+
+/* CALL MODAL */
+.call-modal{position:fixed;inset:0;background:#00000090;backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;z-index:2000;display:none}
+.call-modal.active{display:flex}
+.call-box{background:var(--bg2);border-radius:20px;padding:2.5rem 2rem;text-align:center;width:360px;border:1px solid #ffffff10}
+.call-av{width:80px;height:80px;border-radius:50%;background:var(--accent);margin:0 auto 1rem;display:flex;align-items:center;justify-content:center;font-size:2rem;overflow:hidden;animation:pulse 2s infinite}
+.call-av img{width:100%;height:100%;object-fit:cover}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 #5865f240}50%{box-shadow:0 0 0 20px transparent}}
+.call-name{font-family:'Syne',sans-serif;font-size:1.3rem;font-weight:700;margin-bottom:.4rem}
+.call-status{color:var(--sub);font-size:.9rem;margin-bottom:2rem}
+.call-actions{display:flex;justify-content:center;gap:1rem}
+.call-btn{width:56px;height:56px;border-radius:50%;border:none;cursor:pointer;font-size:1.3rem;transition:all .2s}
+.call-btn.answer{background:var(--green)}
+.call-btn.hangup{background:var(--red)}
+.call-btn:hover{transform:scale(1.1)}
+
+/* PROFILE MODAL */
+.code-box{background:var(--bg3);border-radius:8px;padding:.6rem 1rem;font-family:monospace;font-size:.9rem;display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem;border:1px solid #ffffff10}
+.code-copy{background:none;border:none;color:var(--accent);cursor:pointer;font-size.85rem}
+
+/* SEARCH VIEW */
+.search-view{flex:1;overflow-y:auto;padding:1.5rem}
+.search-bar{display:flex;gap:.75rem;margin-bottom:1.5rem}
+.search-bar input{flex:1;background:var(--bg3);border:1px solid #ffffff10;border-radius:10px;padding:.8rem 1rem;color:var(--text);font-family:inherit;font-size:.95rem;outline:none;transition:border-color .2s}
+.search-bar input:focus{border-color:var(--accent)}
+.search-bar button{padding:.8rem 1.4rem;background:var(--accent);color:#fff;border:none;border-radius:10px;cursor:pointer;font-family:inherit;font-weight:600}
+.servers-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:1rem}
+.server-card{background:var(--bg2);border:1px solid #ffffff08;border-radius:12px;overflow:hidden;cursor:pointer;transition:all .2s}
+.server-card:hover{border-color:#5865f240;transform:translateY(-2px)}
+.server-card-banner{height:80px;background:linear-gradient(135deg,#5865f2,#eb459e);display:flex;align-items:center;justify-content:center;font-size:2rem}
+.server-card-body{padding:.9rem}
+.server-card-name{font-weight:700;margin-bottom:.25rem}
+.server-card-members{font-size:.8rem;color:var(--sub)}
+.server-card-join{display:block;width:100%;margin-top:.75rem;padding:.5rem;background:#5865f220;color:var(--accent);border:1px solid #5865f240;border-radius:6px;text-align:center;font-size:.85rem;font-weight:600;cursor:pointer;transition:all .2s}
+.server-card-join:hover{background:var(--accent);color:#fff}
+
+/* WELCOME */
+.welcome-view{flex:1;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:1rem;color:var(--sub);text-align:center;padding:2rem}
+.welcome-view h2{font-family:'Syne',sans-serif;font-size:1.5rem;color:var(--text)}
+</style>
+</head>
+<body>
+
+<!-- ═══ SERVERS BAR ═══ -->
+<div class="servers-bar">
+  <a href="/app" class="srv-icon home {% if view == 'friends' %}active{% endif %}" title="Messages directs">🏠</a>
+  <div class="srv-divider"></div>
+  {% for srv in user.servers %}
+  <a href="/app/server/{{ srv.id }}" class="srv-icon {% if view in ['server','channel'] and server.id == srv.id %}active{% endif %}" title="{{ srv.name }}">
+    {% if srv.icon %}<img src="/static/uploads/{{ srv.icon }}" alt="{{ srv.name }}">
+    {% else %}{{ srv.name[0].upper() }}{% endif %}
+  </a>
+  {% endfor %}
+  <div class="srv-divider"></div>
+  <div class="srv-icon srv-add" title="Créer/Rejoindre un serveur" onclick="openModal('create-server')">＋</div>
+  <div class="srv-icon srv-explore" title="Explorer les serveurs" onclick="showExplore()">🔭</div>
+</div>
+
+<!-- ═══ CHANNELS / DM SIDEBAR ═══ -->
+<div class="channels-bar">
+  {% if view in ['server','channel'] %}
+  <!-- Server channels -->
+  <div class="server-header">
+    <span>{{ server.name }}</span>
+    <span style="color:var(--sub);font-size:.8rem">⚙️</span>
+  </div>
+  <div class="channels-list">
+    {% set text_chs = server.channels | selectattr('type','eq','text') | list %}
+    {% set voice_chs = server.channels | selectattr('type','eq','voice') | list %}
+    {% if text_chs %}
+    <div class="ch-section"><span>Canaux textuels</span><span style="cursor:pointer" title="Ajouter canal">＋</span></div>
+    {% for ch in text_chs %}
+    <a href="/app/server/{{ server.id }}/channel/{{ ch.id }}" class="ch-item {% if view == 'channel' and channel.id == ch.id %}active{% endif %}">
+      <span class="ch-icon">#</span>{{ ch.name }}
+    </a>
+    {% endfor %}
+    {% endif %}
+    {% if voice_chs %}
+    <div class="ch-section"><span>Canaux vocaux</span></div>
+    {% for ch in voice_chs %}
+    <a href="#" class="ch-item" onclick="startVoiceChannel('{{ ch.name }}')">
+      <span class="ch-icon">🔊</span>{{ ch.name }}
+    </a>
+    {% endfor %}
+    {% endif %}
+    <div class="ch-section" style="margin-top:1rem"><span>Membres ({{ server.members|length }})</span></div>
+    {% for m in server.members %}
+    <div class="ch-item" style="cursor:default">
+      <span class="ch-icon">👤</span>{{ m.username }}
+      {% if m.id == server.owner_id %}<span style="font-size:.6rem;color:var(--yellow);margin-left:auto">PROPRIO</span>{% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <!-- DM list -->
+  <div style="padding:.75rem;border-bottom:1px solid #ffffff08">
+    <div style="background:var(--bg3);border-radius:8px;padding:.5rem .75rem;color:var(--sub);font-size:.85rem;cursor:pointer" onclick="showExplore()">🔍 Trouver un serveur</div>
+  </div>
+  <div class="channels-list">
+    <a href="/app" class="ch-item {% if view == 'friends' %}active{% endif %}">
+      <span class="ch-icon">👥</span>Amis
+      {% if pending|length > 0 %}<span style="background:var(--red);border-radius:50%;width:16px;height:16px;display:flex;align-items:center;justify-content:center;font-size:.6rem;margin-left:auto">{{ pending|length }}</span>{% endif %}
+    </a>
+    <a href="#" class="ch-item" onclick="openModal('nitro')">
+      <span class="ch-icon">💎</span>Nitro
+    </a>
+    {% if user.friends_list %}
+    <div class="dm-section"><h4>Messages directs</h4><span style="cursor:pointer;font-size:.8rem" onclick="openModal('add-friend')">＋</span></div>
+    {% for f in user.friends_list %}
+    <a href="/app/dm/{{ f.id }}" class="friend-item {% if view == 'dm' and friend.id == f.id %}active{% endif %}">
+      <div class="friend-av">
+        {% if f.avatar %}<img src="/static/uploads/{{ f.avatar }}" alt="">{% else %}{{ f.username[0].upper() }}{% endif %}
+        <div class="status-dot"></div>
+      </div>
+      <span class="friend-name">{{ f.username }}</span>
+    </a>
+    {% endfor %}
+    {% endif %}
+  </div>
+  {% endif %}
+  <!-- User Panel -->
+  <div class="user-panel">
+    <div class="user-avatar-sm" onclick="openModal('profile')" title="Profil">
+      {% if user.avatar %}<img src="/static/uploads/{{ user.avatar }}" alt="">{% else %}{{ user.username[0].upper() }}{% endif %}
+    </div>
+    <div class="user-info-sm">
+      <div class="name">{{ user.username }}</div>
+      <div class="tag">#{{ user.discriminator }}</div>
+    </div>
+    <div class="panel-icons">
+      <button class="panel-btn" onclick="openModal('profile')" title="Profil">🎨</button>
+      <button class="panel-btn" title="Muet">🎙️</button>
+      <button class="panel-btn" title="Casque">🎧</button>
+      <a href="/logout" class="panel-btn" style="text-decoration:none">🚪</a>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MAIN ═══ -->
+<div class="main">
+
+  {% if view == 'channel' %}
+  <!-- CHANNEL VIEW -->
+  <div class="channel-header">
+    <span style="color:var(--sub);font-size:1.1rem">#</span>
+    <h3>{{ channel.name }}</h3>
+    <span class="ch-desc">Canal de {{ server.name }}</span>
+    <div class="header-actions">
+      <button class="header-btn" title="Recherche" onclick="openModal('search-msg')">🔍</button>
+      <button class="header-btn" title="Membres">👥</button>
+      <button class="header-btn" title="Épinglés">📌</button>
+    </div>
+  </div>
+  <div class="messages-area" id="messages">
+    {% for msg in messages %}
+    <div class="msg-group">
+      <div class="msg-av">
+        {% if msg.author.avatar %}<img src="/static/uploads/{{ msg.author.avatar }}" alt="">{% else %}{{ msg.author.username[0].upper() }}{% endif %}
+      </div>
+      <div class="msg-content">
+        <div class="msg-header">
+          <span class="msg-author">{{ msg.author.username }}</span>
+          <span class="msg-time">{{ msg.created_at.strftime('%d/%m %H:%M') }}</span>
+        </div>
+        <div class="msg-text">{{ msg.content }}</div>
+      </div>
+    </div>
+    {% endfor %}
+    {% if not messages %}<div style="text-align:center;color:var(--sub);margin:auto;padding:2rem">Soyez le premier à écrire dans #{{ channel.name }} !</div>{% endif %}
+  </div>
+  <div class="typing-indicator" id="typing-indicator"></div>
+  <div class="input-area">
+    <div class="input-wrap">
+      <button class="attach-btn">📎</button>
+      <input type="text" id="msg-input" placeholder="Message #{{ channel.name }}" autocomplete="off">
+      <button class="send-btn" onclick="sendMessage()">➤</button>
+    </div>
+  </div>
+
+  {% elif view == 'dm' %}
+  <!-- DM VIEW -->
+  <div class="channel-header">
+    <div class="friend-av" style="width:32px;height:32px">
+      {% if friend.avatar %}<img src="/static/uploads/{{ friend.avatar }}" alt="">{% else %}{{ friend.username[0].upper() }}{% endif %}
+    </div>
+    <h3>{{ friend.username }}</h3>
+    <div class="header-actions">
+      <button class="header-btn" onclick="startCall({{ friend.id }}, '{{ friend.username }}')" title="Appel">📞</button>
+      <button class="header-btn" onclick="startCall({{ friend.id }}, '{{ friend.username }}', true)" title="Vidéo">📹</button>
+      <button class="header-btn">📌</button>
+    </div>
+  </div>
+  <div class="messages-area" id="messages">
+    {% for msg in messages %}
+    <div class="msg-group">
+      <div class="msg-av">
+        {% if msg.author.avatar %}<img src="/static/uploads/{{ msg.author.avatar }}" alt="">{% else %}{{ msg.author.username[0].upper() }}{% endif %}
+      </div>
+      <div class="msg-content">
+        <div class="msg-header">
+          <span class="msg-author">{{ msg.author.username }}</span>
+          <span class="msg-time">{{ msg.created_at.strftime('%d/%m %H:%M') }}</span>
+        </div>
+        <div class="msg-text">{{ msg.content }}</div>
+      </div>
+    </div>
+    {% endfor %}
+    {% if not messages %}<div style="text-align:center;color:var(--sub);margin:auto;padding:2rem">Début de votre conversation avec {{ friend.username }} !</div>{% endif %}
+  </div>
+  <div class="typing-indicator" id="typing-indicator"></div>
+  <div class="input-area">
+    <div class="input-wrap">
+      <button class="attach-btn">📎</button>
+      <input type="text" id="msg-input" placeholder="Message à {{ friend.username }}" autocomplete="off">
+      <button class="send-btn" onclick="sendMessage()">➤</button>
+    </div>
+  </div>
+
+  {% elif view == 'friends' %}
+  <!-- FRIENDS VIEW -->
+  <div class="channel-header">
+    <span style="font-size:1.1rem">👥</span>
+    <h3>Amis</h3>
+    <div class="header-actions">
+      <button class="header-btn tab-btn active" onclick="showTab('all')">Tous</button>
+      <button class="header-btn tab-btn" onclick="showTab('pending')">
+        En attente {% if pending|length > 0 %}<span style="background:var(--red);border-radius:50%;padding:.1rem .4rem;font-size:.65rem;margin-left:.3rem">{{ pending|length }}</span>{% endif %}
+      </button>
+      <button class="header-btn tab-btn btn-primary" onclick="openModal('add-friend')" style="background:#3ba55c20;color:var(--green);border:1px solid #3ba55c40;border-radius:6px">Ajouter</button>
+    </div>
+  </div>
+  <div class="friends-view">
+    <div id="tab-all">
+      {% if user.friends_list %}
+      <div class="section-label">Tous les amis — {{ user.friends_list|length }}</div>
+      <div class="friends-grid">
+        {% for f in user.friends_list %}
+        <div class="friend-row">
+          <div class="friend-row-av">
+            {% if f.avatar %}<img src="/static/uploads/{{ f.avatar }}" alt="">{% else %}{{ f.username[0].upper() }}{% endif %}
+          </div>
+          <div class="friend-row-info">
+            <div class="name">{{ f.username }}</div>
+            <div class="tag">#{{ f.discriminator }}</div>
+          </div>
+          <div class="friend-actions">
+            <a href="/app/dm/{{ f.id }}" class="fa-btn msg">💬</a>
+            <button class="fa-btn call" onclick="startCall({{ f.id }}, '{{ f.username }}')">📞</button>
+            <button class="fa-btn remove" onclick="removeFriend({{ f.id }})">✕</button>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div style="text-align:center;padding:3rem;color:var(--sub)">
+        <div style="font-size:3rem;margin-bottom:1rem">🤝</div>
+        <h3 style="color:var(--text);margin-bottom:.5rem">Pas encore d'amis</h3>
+        <p>Ajoutez des amis avec leur code ami !</p>
+        <button onclick="openModal('add-friend')" style="margin-top:1rem;padding:.7rem 1.5rem;background:var(--accent);color:#fff;border:none;border-radius:8px;cursor:pointer;font-family:inherit;font-weight:600">Ajouter un ami</button>
+      </div>
+      {% endif %}
+    </div>
+    <div id="tab-pending" style="display:none">
+      {% if pending %}
+      <div class="section-label">En attente — {{ pending|length }}</div>
+      <div class="friends-grid">
+        {% for req in pending %}
+        <div class="friend-row" id="req-{{ req.id }}">
+          <div class="friend-row-av">{{ req.sender.username[0].upper() }}</div>
+          <div class="friend-row-info">
+            <div class="name">{{ req.sender.username }}</div>
+            <div class="tag">Demande reçue</div>
+          </div>
+          <div class="friend-actions">
+            <button class="fa-btn accept" onclick="handleFriendReq({{ req.id }},'accept')">✓ Accepter</button>
+            <button class="fa-btn decline" onclick="handleFriendReq({{ req.id }},'decline')">✕</button>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div style="text-align:center;padding:3rem;color:var(--sub)">Aucune demande en attente</div>
+      {% endif %}
+    </div>
+  </div>
+
+  {% elif view == 'explore' %}
+  <!-- EXPLORE SERVERS -->
+  <div class="channel-header"><h3>🔭 Explorer les serveurs</h3></div>
+  <div class="search-view" id="explore-view">
+    <div class="search-bar">
+      <input type="text" id="server-search" placeholder="Rechercher des serveurs publics..." oninput="searchServers()">
+    </div>
+    <div class="servers-grid" id="servers-grid"></div>
+  </div>
+
+  {% else %}
+  <div class="welcome-view">
+    <div style="font-size:4rem">⚡</div>
+    <h2>Bienvenue sur Cord</h2>
+    <p>Rejoignez ou créez un serveur pour commencer à discuter !</p>
+    <button onclick="openModal('create-server')" style="margin-top:.5rem;padding:.8rem 1.8rem;background:var(--accent);color:#fff;border:none;border-radius:10px;cursor:pointer;font-family:inherit;font-weight:600;font-size:1rem">Créer un serveur</button>
+  </div>
+  {% endif %}
+</div>
+
+<!-- ═══ MODALS ═══ -->
+
+<!-- Create Server -->
+<div class="modal-bg" id="modal-create-server">
+<div class="modal">
+  <h3>Créer un serveur</h3>
+  <p>Donnez une identité à votre communauté</p>
+  <div class="icon-preview" id="icon-preview" onclick="document.getElementById('icon-file').click()">
+    <img id="icon-img" src="" alt="" style="display:none">
+    <span id="icon-placeholder">📷</span>
+  </div>
+  <input type="file" id="icon-file" accept="image/*" style="display:none" onchange="previewIcon(this)">
+  <div class="modal-field"><label>Nom du serveur</label><input type="text" id="srv-name" placeholder="Mon super serveur"></div>
+  <div class="toggle-row">
+    <span style="font-size:.9rem">Serveur public</span>
+    <div class="toggle on" id="public-toggle" onclick="this.classList.toggle('on')"></div>
+  </div>
+  <div class="modal-actions">
+    <button class="modal-btn cancel" onclick="closeModal('create-server')">Annuler</button>
+    <button class="modal-btn primary" onclick="createServer()">Créer !</button>
+  </div>
+</div>
+</div>
+
+<!-- Join Server -->
+<div class="modal-bg" id="modal-join-server">
+<div class="modal">
+  <h3>Rejoindre un serveur</h3>
+  <p>Entrez le code d'invitation</p>
+  <div class="modal-field"><label>Code d'invitation</label><input type="text" id="join-code" placeholder="ex: aB3kX9pQ"></div>
+  <div class="modal-actions">
+    <button class="modal-btn cancel" onclick="closeModal('join-server')">Annuler</button>
+    <button class="modal-btn primary" onclick="joinServer()">Rejoindre</button>
+  </div>
+</div>
+</div>
+
+<!-- Add Friend -->
+<div class="modal-bg" id="modal-add-friend">
+<div class="modal">
+  <h3>Ajouter un ami</h3>
+  <p>Entrez le code ami de votre amis</p>
+  <div class="modal-field"><label>Code ami</label><input type="text" id="friend-code-input" placeholder="ex: ABCDE12345"></div>
+  <div class="modal-actions">
+    <button class="modal-btn cancel" onclick="closeModal('add-friend')">Annuler</button>
+    <button class="modal-btn primary" onclick="sendFriendReq()">Envoyer la demande</button>
+  </div>
+</div>
+</div>
+
+<!-- Profile -->
+<div class="modal-bg" id="modal-profile">
+<div class="modal">
+  <h3>Votre profil</h3>
+  <div class="icon-preview" id="avatar-preview" onclick="document.getElementById('avatar-file').click()">
+    {% if user.avatar %}<img id="avatar-img" src="/static/uploads/{{ user.avatar }}" alt="" style="width:100%;height:100%;object-fit:cover">
+    <span id="avatar-placeholder" style="display:none">📷</span>
+    {% else %}<img id="avatar-img" src="" alt="" style="display:none">
+    <span id="avatar-placeholder">📷</span>{% endif %}
+  </div>
+  <input type="file" id="avatar-file" accept="image/*" style="display:none" onchange="previewAvatar(this)">
+  <div class="modal-field"><label>Nom d'utilisateur</label><input type="text" id="profile-username" value="{{ user.username }}"></div>
+  <div style="margin-bottom:.75rem">
+    <div style="font-size:.75rem;font-weight:700;color:var(--sub);letter-spacing:.06em;text-transform:uppercase;margin-bottom:.4rem">Votre tag</div>
+    <div class="code-box">{{ user.tag() }}<span style="color:var(--sub);font-size:.8rem">📋</span></div>
+  </div>
+  <div style="margin-bottom:.75rem">
+    <div style="font-size:.75rem;font-weight:700;color:var(--sub);letter-spacing:.06em;text-transform:uppercase;margin-bottom:.4rem">Code ami</div>
+    <div class="code-box">{{ user.friend_code }}<button class="code-copy" onclick="copyCode('{{ user.friend_code }}')">Copier</button></div>
+  </div>
+  <div class="modal-actions">
+    <button class="modal-btn cancel" onclick="closeModal('profile')">Fermer</button>
+    <button class="modal-btn primary" onclick="saveProfile()">Sauvegarder</button>
+  </div>
+</div>
+</div>
+
+<!-- Create/Join choice modal -->
+<div class="modal-bg" id="modal-server-choice">
+<div class="modal" style="text-align:center">
+  <h3>Ajouter un serveur</h3>
+  <p>Créez le vôtre ou rejoignez-en un</p>
+  <div style="display:flex;gap:1rem;margin-top:1rem">
+    <button class="modal-btn primary" style="flex:1" onclick="closeModal('server-choice');openModal('create-server')">✨ Créer</button>
+    <button class="modal-btn" style="flex:1;background:var(--bg3);color:var(--text)" onclick="closeModal('server-choice');openModal('join-server')">🔗 Rejoindre</button>
+  </div>
+  <button class="modal-btn cancel" onclick="closeModal('server-choice')" style="margin-top:.75rem;width:100%">Annuler</button>
+</div>
+</div>
+
+<!-- CALL UI -->
+<div class="call-modal" id="call-modal">
+<div class="call-box">
+  <div class="call-av" id="call-av">?</div>
+  <div class="call-name" id="call-name">...</div>
+  <div class="call-status" id="call-status">Appel en cours...</div>
+  <div class="call-actions">
+    <button class="call-btn answer" id="call-answer" onclick="answerCall()" style="display:none">📞</button>
+    <button class="call-btn hangup" onclick="hangupCall()">📵</button>
+  </div>
+</div>
+</div>
+
+<!-- Notification toast -->
+<div class="notification" id="toast"></div>
+
+<script>
+const CURRENT_USER = {{ user.id }};
+const CURRENT_VIEW = '{{ view }}';
+{% if view == 'channel' %}const CHANNEL_ID = {{ channel.id }};{% endif %}
+{% if view == 'dm' %}const DM_ROOM = '{{ room }}';const DM_FRIEND_ID = {{ friend.id }};{% endif %}
+
+// ── Socket.IO ──────────────────────────────────────────────────────────────
+const socket = io();
+
+socket.on('connect', () => {
+  {% if view == 'channel' %}socket.emit('join_channel', {channel_id: CHANNEL_ID});{% endif %}
+  {% if view == 'dm' %}socket.emit('join_dm', {room: DM_ROOM});{% endif %}
+});
+
+socket.on('new_message', data => {
+  appendMessage(data);
+  scrollBottom();
+});
+
+socket.on('user_typing', data => {
+  const el = document.getElementById('typing-indicator');
+  if (el) { el.textContent = `${data.user} est en train d'écrire...`; clearTimeout(window._typingTimer); window._typingTimer = setTimeout(() => el.textContent = '', 3000); }
+});
+
+socket.on('friend_request', data => { showToast(`Demande d'ami de ${data.from}`, 'success'); });
+
+socket.on('incoming_call', data => { showIncomingCall(data); });
+
+// ── Messages ──────────────────────────────────────────────────────────────
+function sendMessage() {
+  const input = document.getElementById('msg-input');
+  const content = input.value.trim();
+  if (!content) return;
+  const data = {content};
+  {% if view == 'channel' %}data.channel_id = CHANNEL_ID;{% endif %}
+  {% if view == 'dm' %}data.dm_room = DM_ROOM;{% endif %}
+  socket.emit('send_message', data);
+  input.value = '';
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const input = document.getElementById('msg-input');
+  if (input) {
+    input.addEventListener('keydown', e => {
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+    });
+    input.addEventListener('input', () => {
+      const data = {};
+      {% if view == 'channel' %}data.channel_id = CHANNEL_ID;{% endif %}
+      {% if view == 'dm' %}data.dm_room = DM_ROOM;{% endif %}
+      socket.emit('typing', data);
+    });
+  }
+  scrollBottom();
+  {% if view == 'explore' %}searchServers();{% endif %}
+});
+
+function appendMessage(msg) {
+  const area = document.getElementById('messages');
+  if (!area) return;
+  const initials = msg.author ? msg.author[0].toUpperCase() : '?';
+  const avHtml = msg.avatar ? `<img src="/static/uploads/${msg.avatar}" alt="">` : initials;
+  area.insertAdjacentHTML('beforeend', `
+    <div class="msg-group">
+      <div class="msg-av">${avHtml}</div>
+      <div class="msg-content">
+        <div class="msg-header"><span class="msg-author">${msg.author}</span><span class="msg-time">${msg.time}</span></div>
+        <div class="msg-text">${escapeHtml(msg.content)}</div>
+      </div>
+    </div>`);
+}
+
+function escapeHtml(t) { return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function scrollBottom() { const a = document.getElementById('messages'); if(a) a.scrollTop = a.scrollHeight; }
+
+// ── Modals ────────────────────────────────────────────────────────────────
+function openModal(id) {
+  if (id === 'create-server') { document.getElementById('modal-server-choice').classList.add('open'); return; }
+  document.getElementById(`modal-${id}`)?.classList.add('open');
+}
+function closeModal(id) { document.getElementById(`modal-${id}`)?.classList.remove('open'); }
+document.querySelectorAll('.modal-bg').forEach(m => m.addEventListener('click', e => { if(e.target === m) m.classList.remove('open'); }));
+
+// ── Server creation ────────────────────────────────────────────────────────
+function previewIcon(input) {
+  if (!input.files[0]) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    document.getElementById('icon-img').src = e.target.result;
+    document.getElementById('icon-img').style.display = '';
+    document.getElementById('icon-placeholder').style.display = 'none';
+  };
+  reader.readAsDataURL(input.files[0]);
+}
+
+async function createServer() {
+  const name = document.getElementById('srv-name').value.trim();
+  if (!name) return showToast('Nom requis', 'error');
+  const fd = new FormData();
+  fd.append('name', name);
+  fd.append('public', document.getElementById('public-toggle').classList.contains('on') ? '1' : '');
+  const iconFile = document.getElementById('icon-file').files[0];
+  if (iconFile) fd.append('icon', iconFile);
+  const r = await fetch('/api/server/create', {method:'POST', body:fd});
+  const d = await r.json();
+  if (d.redirect) window.location.href = d.redirect;
+  else showToast(d.error || 'Erreur', 'error');
+}
+
+async function joinServer() {
+  const code = document.getElementById('join-code').value.trim();
+  const r = await fetch('/api/server/join', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({code})});
+  const d = await r.json();
+  if (d.redirect) window.location.href = d.redirect;
+  else showToast(d.error || 'Code invalide', 'error');
+}
+
+// ── Friends ────────────────────────────────────────────────────────────────
+async function sendFriendReq() {
+  const code = document.getElementById('friend-code-input').value.trim();
+  const r = await fetch('/api/friend/add', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({code})});
+  const d = await r.json();
+  if (d.ok) { showToast(d.message, 'success'); closeModal('add-friend'); document.getElementById('friend-code-input').value = ''; }
+  else showToast(d.error || 'Erreur', 'error');
+}
+
+async function handleFriendReq(id, action) {
+  const r = await fetch(`/api/friend/${action}/${id}`, {method:'POST'});
+  const d = await r.json();
+  if (d.ok) { document.getElementById(`req-${id}`)?.remove(); showToast(action === 'accept' ? 'Ami ajouté !' : 'Demande refusée', 'success'); }
+}
+
+function showTab(tab) {
+  document.getElementById('tab-all').style.display = tab === 'all' ? '' : 'none';
+  document.getElementById('tab-pending').style.display = tab === 'pending' ? '' : 'none';
+}
+
+// ── Profile ────────────────────────────────────────────────────────────────
+function previewAvatar(input) {
+  if (!input.files[0]) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    document.getElementById('avatar-img').src = e.target.result;
+    document.getElementById('avatar-img').style.display = '';
+    document.getElementById('avatar-placeholder').style.display = 'none';
+  };
+  reader.readAsDataURL(input.files[0]);
+}
+
+async function saveProfile() {
+  const fd = new FormData();
+  fd.append('username', document.getElementById('profile-username').value.trim());
+  const file = document.getElementById('avatar-file').files[0];
+  if (file) fd.append('avatar', file);
+  const r = await fetch('/api/profile/update', {method:'POST', body:fd});
+  const d = await r.json();
+  if (d.ok) { showToast('Profil mis à jour !', 'success'); closeModal('profile'); setTimeout(() => location.reload(), 1000); }
+}
+
+function copyCode(code) { navigator.clipboard.writeText(code).then(() => showToast('Code copié !', 'success')); }
+
+// ── Server search ──────────────────────────────────────────────────────────
+async function searchServers() {
+  const q = document.getElementById('server-search')?.value || '';
+  const r = await fetch(`/api/server/search?q=${encodeURIComponent(q)}`);
+  const servers = await r.json();
+  const grid = document.getElementById('servers-grid');
+  if (!grid) return;
+  grid.innerHTML = servers.length ? servers.map(s => `
+    <div class="server-card">
+      <div class="server-card-banner">${s.icon ? `<img src="/static/uploads/${s.icon}" style="width:100%;height:100%;object-fit:cover">` : s.name[0].toUpperCase()}</div>
+      <div class="server-card-body">
+        <div class="server-card-name">${s.name}</div>
+        <div class="server-card-members">👥 ${s.members} membres</div>
+        <button class="server-card-join" onclick="quickJoin('${s.invite}')">Rejoindre</button>
+      </div>
+    </div>`).join('') : '<div style="color:var(--sub);text-align:center;padding:2rem;grid-column:1/-1">Aucun serveur trouvé</div>';
+}
+
+async function quickJoin(code) {
+  const r = await fetch('/api/server/join', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({code})});
+  const d = await r.json();
+  if (d.redirect) window.location.href = d.redirect;
+}
+
+function showExplore() { window.location.href = '/app?explore=1'; }
+
+// ── Calls ─────────────────────────────────────────────────────────────────
+let callUserId = null;
+function startCall(uid, name, video=false) {
+  callUserId = uid;
+  document.getElementById('call-av').textContent = name[0].toUpperCase();
+  document.getElementById('call-name').textContent = name;
+  document.getElementById('call-status').textContent = video ? 'Appel vidéo en cours...' : 'Appel en cours...';
+  document.getElementById('call-modal').classList.add('active');
+  socket.emit('call_user', {to: uid, offer: null});
+}
+
+function showIncomingCall(data) {
+  callUserId = data.from_id;
+  document.getElementById('call-av').textContent = data.from[0].toUpperCase();
+  document.getElementById('call-name').textContent = data.from;
+  document.getElementById('call-status').textContent = 'Appel entrant...';
+  document.getElementById('call-answer').style.display = '';
+  document.getElementById('call-modal').classList.add('active');
+}
+
+function answerCall() {
+  document.getElementById('call-answer').style.display = 'none';
+  document.getElementById('call-status').textContent = 'Connecté';
+  socket.emit('call_answer', {to: callUserId, answer: null});
+  showToast('Appel connecté', 'success');
+}
+
+function hangupCall() { document.getElementById('call-modal').classList.remove('active'); callUserId = null; }
+
+function startVoiceChannel(name) { showToast(`Connexion à "${name}"...`, 'success'); }
+
+// ── Toast ─────────────────────────────────────────────────────────────────
+function showToast(msg, type='success') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = `notification ${type} show`;
+  clearTimeout(window._toastTimer);
+  window._toastTimer = setTimeout(() => t.classList.remove('show'), 3500);
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cord — Parlez, jouez, créez</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#0e0f13;--bg2:#161820;--accent:#5865f2;--accent2:#eb459e;--text:#e0e2ff;--sub:#8b8fa8}
+body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100vh;overflow-x:hidden}
+.noise{position:fixed;inset:0;opacity:.03;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='4'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");pointer-events:none;z-index:100}
+nav{display:flex;justify-content:space-between;align-items:center;padding:1.5rem 3rem;border-bottom:1px solid #ffffff08}
+.logo{font-family:'Syne',sans-serif;font-size:1.5rem;font-weight:800;background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.nav-btns a{text-decoration:none;padding:.6rem 1.4rem;border-radius:8px;font-weight:600;font-size:.9rem;margin-left:.8rem;transition:all .2s}
+.btn-ghost{color:var(--text);border:1px solid #ffffff15;background:transparent}
+.btn-ghost:hover{background:#ffffff12}
+.btn-solid{background:var(--accent);color:#fff}
+.btn-solid:hover{background:#4752c4}
+.hero{text-align:center;padding:8rem 2rem 4rem;position:relative}
+.hero-badge{display:inline-block;background:#ffffff0a;border:1px solid #ffffff15;border-radius:999px;padding:.4rem 1rem;font-size:.8rem;color:var(--sub);margin-bottom:2rem;letter-spacing:.05em}
+h1{font-family:'Syne',sans-serif;font-size:clamp(2.8rem,7vw,5.5rem);font-weight:800;line-height:1.05;max-width:900px;margin:0 auto 1.5rem}
+h1 span{background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.hero-sub{color:var(--sub);font-size:1.15rem;max-width:520px;margin:0 auto 2.5rem;line-height:1.7}
+.hero-cta{display:flex;gap:1rem;justify-content:center;flex-wrap:wrap}
+.cta-main{padding:.9rem 2.2rem;background:var(--accent);color:#fff;border-radius:12px;text-decoration:none;font-weight:600;font-size:1rem;transition:all .2s;box-shadow:0 0 40px #5865f240}
+.cta-main:hover{background:#4752c4;transform:translateY(-1px)}
+.cta-sec{padding:.9rem 2.2rem;background:#ffffff0f;color:var(--text);border-radius:12px;text-decoration:none;font-weight:600;font-size:1rem;border:1px solid #ffffff12;transition:all .2s}
+.cta-sec:hover{background:#ffffff1a}
+.features{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1.5rem;max-width:1100px;margin:5rem auto;padding:0 2rem}
+.feat{background:var(--bg2);border:1px solid #ffffff0a;border-radius:16px;padding:2rem;transition:all .3s}
+.feat:hover{border-color:#5865f240;transform:translateY(-3px)}
+.feat-icon{font-size:2rem;margin-bottom:1rem}
+.feat h3{font-family:'Syne',sans-serif;font-size:1.1rem;margin-bottom:.6rem}
+.feat p{color:var(--sub);font-size:.9rem;line-height:1.6}
+.orb{position:absolute;border-radius:50%;filter:blur(80px);pointer-events:none}
+.orb1{width:600px;height:600px;background:#5865f215;top:-200px;left:50%;transform:translateX(-50%)}
+.orb2{width:400px;height:400px;background:#eb459e10;bottom:-100px;right:10%}
+footer{text-align:center;padding:3rem;color:var(--sub);font-size:.85rem;border-top:1px solid #ffffff08}
+</style>
+</head>
+<body>
+<div class="noise"></div>
+<nav>
+  <div class="logo">⚡ Cord</div>
+  <div class="nav-btns">
+    <a href="/login" class="btn-ghost">Connexion</a>
+    <a href="/register" class="btn-solid">S'inscrire</a>
+  </div>
+</nav>
+<section class="hero">
+  <div class="orb orb1"></div>
+  <div class="orb orb2"></div>
+  <div class="hero-badge">✨ Votre espace de communication</div>
+  <h1>Parlez. Jouez.<br><span>Créez ensemble.</span></h1>
+  <p class="hero-sub">Cord réunit vos amis, vos communautés et vos passions dans une seule plateforme fluide et moderne.</p>
+  <div class="hero-cta">
+    <a href="/register" class="cta-main">Ouvrir Cord — c'est gratuit</a>
+    <a href="/login" class="cta-sec">Se connecter</a>
+  </div>
+</section>
+<div class="features">
+  <div class="feat"><div class="feat-icon">💬</div><h3>Messages instantanés</h3><p>Salons textuels, messages privés, historique complet — tout en temps réel.</p></div>
+  <div class="feat"><div class="feat-icon">🏰</div><h3>Serveurs personnalisés</h3><p>Créez votre communauté avec des canaux, une icône et un code d'invitation unique.</p></div>
+  <div class="feat"><div class="feat-icon">👥</div><h3>Système d'amis</h3><p>Ajoutez vos amis par code ami, acceptez les demandes et discutez en privé.</p></div>
+  <div class="feat"><div class="feat-icon">📞</div><h3>Appels audio/vidéo</h3><p>Lancez un appel depuis n'importe quelle conversation en un clic.</p></div>
+  <div class="feat"><div class="feat-icon">🔍</div><h3>Découverte de serveurs</h3><p>Explorez des communautés publiques et rejoignez celles qui vous correspondent.</p></div>
+  <div class="feat"><div class="feat-icon">🎨</div><h3>Profil personnalisé</h3><p>Photo de profil, statut, tag unique — montrez qui vous êtes.</p></div>
+</div>
+<footer>© 2024 Cord — Clone Discord pédagogique</footer>
+</body>
+</html>

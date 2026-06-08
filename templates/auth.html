@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% if mode == 'login' %}Connexion{% else %}Inscription{% endif %} — Cord</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#0e0f13;--bg2:#161820;--bg3:#1e2030;--accent:#5865f2;--text:#e0e2ff;--sub:#8b8fa8;--err:#ed4245}
+body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center}
+.card{background:var(--bg2);border:1px solid #ffffff0a;border-radius:20px;padding:2.5rem;width:100%;max-width:440px;margin:2rem}
+.logo{font-family:'Syne',sans-serif;font-size:1.4rem;font-weight:800;background:linear-gradient(135deg,#5865f2,#eb459e);-webkit-background-clip:text;-webkit-text-fill-color:transparent;text-align:center;margin-bottom:.5rem}
+h2{text-align:center;font-size:1.5rem;font-weight:700;margin-bottom:.4rem}
+.sub{text-align:center;color:var(--sub);font-size:.9rem;margin-bottom:2rem}
+.field{margin-bottom:1.2rem}
+label{display:block;font-size:.8rem;font-weight:600;color:var(--sub);letter-spacing:.06em;text-transform:uppercase;margin-bottom:.5rem}
+input{width:100%;background:var(--bg3);border:1px solid #ffffff10;border-radius:8px;padding:.8rem 1rem;color:var(--text);font-family:inherit;font-size:.95rem;outline:none;transition:border-color .2s}
+input:focus{border-color:var(--accent)}
+.error{background:#ed424520;border:1px solid #ed424540;border-radius:8px;padding:.8rem 1rem;color:var(--err);font-size:.9rem;margin-bottom:1.2rem}
+.btn{width:100%;padding:.9rem;background:var(--accent);color:#fff;border:none;border-radius:8px;font-family:inherit;font-size:1rem;font-weight:600;cursor:pointer;transition:background .2s}
+.btn:hover{background:#4752c4}
+.switch{text-align:center;margin-top:1.2rem;font-size:.9rem;color:var(--sub)}
+.switch a{color:var(--accent);text-decoration:none;font-weight:500}
+.back{display:block;text-align:center;margin-top:1rem;color:var(--sub);font-size:.85rem;text-decoration:none}
+.back:hover{color:var(--text)}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">⚡ Cord</div>
+  <h2>{% if mode == 'login' %}Bon retour !{% else %}Créer un compte{% endif %}</h2>
+  <p class="sub">{% if mode == 'login' %}Content de vous revoir !{% else %}Rejoignez des milliers de communautés{% endif %}</p>
+  {% if error %}<div class="error">{{ error }}</div>{% endif %}
+  <form method="POST">
+    {% if mode == 'register' %}
+    <div class="field">
+      <label>Nom d'utilisateur</label>
+      <input type="text" name="username" required placeholder="CoolUser" maxlength="32">
+    </div>
+    {% endif %}
+    <div class="field">
+      <label>Adresse e-mail</label>
+      <input type="email" name="email" required placeholder="vous@exemple.fr">
+    </div>
+    <div class="field">
+      <label>Mot de passe</label>
+      <input type="password" name="password" required placeholder="••••••••" minlength="6">
+    </div>
+    <button type="submit" class="btn">{% if mode == 'login' %}Se connecter{% else %}S'inscrire{% endif %}</button>
+  </form>
+  <p class="switch">
+    {% if mode == 'login' %}Pas encore de compte ? <a href="/register">S'inscrire</a>{% else %}Déjà inscrit ? <a href="/login">Se connecter</a>{% endif %}
+  </p>
+  <a href="/" class="back">← Retour à l'accueil</a>
+</div>
+</body>
+</html>
